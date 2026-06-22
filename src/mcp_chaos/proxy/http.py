@@ -31,10 +31,18 @@ def build_app(upstream: str, plan, strict: bool = False,
     async def proxy(request: Request) -> JSONResponse:
         msg = await request.json()
         msg = engine.on_request_message(msg)
-        async with _make_client() as client:
-            upstream_resp = await client.post(upstream, json=msg)
-        out = engine.on_response_message(upstream_resp.json())
-        return JSONResponse(out)
+        try:
+            async with _make_client() as client:
+                upstream_resp = await client.post(upstream, json=msg)
+            out = engine.on_response_message(upstream_resp.json())
+            return JSONResponse(out)
+        except Exception:
+            if engine.strict:
+                raise
+            return JSONResponse(
+                {"jsonrpc": "2.0", "id": msg.get("id"),
+                 "error": {"code": -32603, "message": "mcp-chaos: upstream error (fail-safe)"}}
+            )
 
     @app.get("/healthz")
     async def healthz() -> dict:

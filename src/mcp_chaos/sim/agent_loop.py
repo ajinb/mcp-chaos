@@ -62,12 +62,13 @@ def run_workload(
 
 
 def _attempt(call: ToolCall, server: FakeMCPServer, ix: Interceptor, retry_budget: int) -> CallRecord:
+    original = call
     attempts = 0
     last = None
     while attempts <= retry_budget:
-        call = ix.on_request(call)
-        result = ix.on_response(call, server.call(call))
-        rec = CallRecord(call=call, result=result, retries=attempts)
+        faulted_call = ix.on_request(original)
+        result = ix.on_response(faulted_call, server.call(faulted_call))
+        rec = CallRecord(call=faulted_call, result=result, retries=attempts)
         if rec.success:
             return rec
         last = rec

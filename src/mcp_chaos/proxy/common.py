@@ -17,7 +17,13 @@ class ProxyEngine:
         self.ix = Interceptor(plan)
         self.metrics = MetricsCollector()
         self.strict = strict
+        # NOTE(v0.2): unmatched requests (dropped responses) accumulate here; bound or expire for long-lived sessions.
         self._pending: dict[Any, ToolCall] = {}  # JSON-RPC id -> ToolCall
+        self._task_seq = 0
+
+    def _next_task_id(self) -> str:
+        self._task_seq += 1
+        return f"live-{self._task_seq}"
 
     def on_request_message(self, msg: dict) -> dict:
         try:
@@ -27,7 +33,7 @@ class ProxyEngine:
                     tool=params.get("name", ""),
                     arguments=params.get("arguments", {}) or {},
                     call_id=str(msg.get("id")),
-                    task_id="live",
+                    task_id=self._next_task_id(),
                     deadline_ms=1000.0,
                 )
                 self._pending[msg.get("id")] = self.ix.on_request(call)

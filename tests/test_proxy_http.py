@@ -33,3 +33,28 @@ async def test_http_proxy_injects_drop_tool():
                                             "params": {"name": "get_metrics", "arguments": {}}})
     body = r.json()
     assert "error" in body
+
+
+@pytest.mark.asyncio
+async def test_http_proxy_fails_safe_when_upstream_errors():
+    """A crashing upstream returns a JSON-RPC error (code -32603), not a 500."""
+
+    @asynccontextmanager
+    async def fake_client_factory():
+        client = AsyncMock()
+        client.post = AsyncMock(side_effect=RuntimeError("upstream down"))
+        yield client
+
+    plan = FaultPlan(faults=[], seed=0)
+    app = build_app(upstream="http://upstream.invalid/mcp", plan=plan,
+                    _http_client_factory=fake_client_factory)
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        r = await client.post("/mcp", json={"jsonrpc": "2.0", "id": 99, "method": "tools/call",
+                                            "params": {"name": "get_metrics", "arguments": {}}})
+    assert r.status_code == 200
+    body = r.json()
+    assert "error" in body
+    assert body["error"]["code"] == -32603
+    assert body["id"] == 99

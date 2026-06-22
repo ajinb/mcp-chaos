@@ -35,5 +35,8 @@ def load_fault_plan(path: str) -> FaultPlan:
         cls = _REGISTRY.get(kind)
         if cls is None:
             raise ValueError(f"unknown fault type: {kind}")
-        faults.append(cls(**entry))
+        try:
+            faults.append(cls(**entry))
+        except TypeError as exc:
+            raise ValueError(f"invalid fields for fault type '{kind}': {exc}") from exc
     return FaultPlan(faults=faults, seed=seed)

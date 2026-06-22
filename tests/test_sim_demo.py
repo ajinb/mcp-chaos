@@ -11,6 +11,6 @@ def test_resilience_reduces_blast_radius():
 
     assert no_res.tcaf == 8.0
     # Naive fan-out compounds failures: a meaningful fraction of tasks fail.
-    assert no_res.blast_radius > 0.08
+    assert no_res.blast_radius > 0.10
     # Retry budget + graceful degradation recover most of the gap.
     assert with_res.blast_radius < no_res.blast_radius / 2

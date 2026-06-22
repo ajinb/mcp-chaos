@@ -17,7 +17,8 @@ class ResilienceConfig:
 
     @classmethod
     def disabled(cls) -> "ResilienceConfig":
-        return cls(retry_budget=0, graceful_degradation=False, eta_breaker_threshold=1.0)
+        # threshold=0.0: ETA is always >= 0, so the breaker never trips (fully disabled).
+        return cls(retry_budget=0, graceful_degradation=False, eta_breaker_threshold=0.0)
 
     @classmethod
     def enabled(cls) -> "ResilienceConfig":
@@ -29,16 +30,16 @@ class CircuitBreaker:
 
     def __init__(self, threshold: float):
         self.threshold = threshold
-        self._responded: dict[str, int] = {}
+        self._total: dict[str, int] = {}
         self._correct: dict[str, int] = {}
         self._open: set[str] = set()
 
     def observe(self, tool: str, responded: bool, correct: bool) -> None:
-        self._responded[tool] = self._responded.get(tool, 0) + (1 if responded else 0)
+        self._total[tool] = self._total.get(tool, 0) + 1
         self._correct[tool] = self._correct.get(tool, 0) + (1 if correct else 0)
-        seen = max(self._responded.get(tool, 0), 1)
-        eta = self._correct.get(tool, 0) / seen
-        if eta < self.threshold and self._responded.get(tool, 0) + self._correct.get(tool, 0) >= 4:
+        seen = self._total[tool]
+        eta = self._correct[tool] / seen
+        if eta < self.threshold and seen >= 4:
             self._open.add(tool)
 
     def is_open(self, tool: str) -> bool:

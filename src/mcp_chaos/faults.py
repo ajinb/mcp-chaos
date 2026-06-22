@@ -25,6 +25,8 @@ class Fault:
 
 @dataclass
 class LatencyFault(Fault):
+    # NOTE(v0.1): in live-proxy mode latency is recorded in metrics but not
+    # actually slept; real delay injection is a v0.2 follow-up.
     added_ms: float = 250.0
     jitter_ms: float = 0.0
     probability: float = 1.0

@@ -1,4 +1,4 @@
-from mcp_chaos.faults import FaultPlan, LatencyFault
+from mcp_chaos.faults import DropToolFault, FaultPlan, LatencyFault
 from mcp_chaos.proxy.common import ProxyEngine
 
 
@@ -25,7 +25,6 @@ def test_engine_intercepts_tools_call_response():
 
 
 def test_engine_drop_tool_turns_response_into_error():
-    from mcp_chaos.faults import DropToolFault
     engine = ProxyEngine(FaultPlan(faults=[DropToolFault(tools=["get_metrics"])], seed=0))
     engine.on_request_message({"jsonrpc": "2.0", "id": 7, "method": "tools/call",
                                "params": {"name": "get_metrics", "arguments": {}}})
@@ -33,3 +32,24 @@ def test_engine_drop_tool_turns_response_into_error():
                                       "result": {"content": [{"type": "text", "text": "ok"}]}})
     assert "error" in out
     assert engine.metrics.summary().availability == 0.0
+
+
+def test_two_calls_blast_radius_reflects_partial_failure():
+    """Two tools/call round-trips with one tool dropped → blast_radius == 0.5."""
+    # Drop only "bad_tool"; "good_tool" succeeds.
+    engine = ProxyEngine(FaultPlan(faults=[DropToolFault(tools=["bad_tool"])], seed=0))
+
+    # First call: bad_tool (will be dropped → task fails)
+    engine.on_request_message({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                               "params": {"name": "bad_tool", "arguments": {}}})
+    engine.on_response_message({"jsonrpc": "2.0", "id": 1,
+                                "result": {"content": [{"type": "text", "text": "ok"}]}})
+
+    # Second call: good_tool (succeeds → task succeeds)
+    engine.on_request_message({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                               "params": {"name": "good_tool", "arguments": {}}})
+    engine.on_response_message({"jsonrpc": "2.0", "id": 2,
+                                "result": {"content": [{"type": "text", "text": "ok"}]}})
+
+    s = engine.metrics.summary()
+    assert s.blast_radius == 0.5

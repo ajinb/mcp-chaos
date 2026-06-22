@@ -49,7 +49,7 @@ async def run_stdio_proxy(server_cmd: list[str], plan, strict: bool = False) -> 
         *server_cmd, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
     )
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     client_reader = asyncio.StreamReader()
     await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(client_reader), sys.stdin)
 

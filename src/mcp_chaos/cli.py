@@ -40,31 +40,17 @@ def cmd_proxy(args) -> int:
     raise SystemExit(f"unknown transport: {args.transport}")
 
 
-class _StrippingNamespace(argparse.Namespace):
-    """Post-processes server_cmd to strip a leading '--' left by argparse.REMAINDER."""
+class _StripLeadingDashes(argparse.Action):
+    """REMAINDER keeps a leading '--'; drop it so it never reaches the subprocess."""
 
-    def __setattr__(self, name, value):
-        if name == "server_cmd" and isinstance(value, list) and value and value[0] == "--":
-            value = value[1:]
-        super().__setattr__(name, value)
-
-
-class _StrippingParser(argparse.ArgumentParser):
-    """ArgumentParser subclass that uses _StrippingNamespace by default."""
-
-    def parse_args(self, args=None, namespace=None):
-        if namespace is None:
-            namespace = _StrippingNamespace()
-        return super().parse_args(args, namespace)
-
-    def parse_known_args(self, args=None, namespace=None):
-        if namespace is None:
-            namespace = _StrippingNamespace()
-        return super().parse_known_args(args, namespace)
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values and values[0] == "--":
+            values = values[1:]
+        setattr(namespace, self.dest, values)
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = _StrippingParser(prog="mcp-chaos")
+    parser = argparse.ArgumentParser(prog="mcp-chaos")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("demo", help="offline deterministic blast-radius reproduction")
@@ -75,7 +61,7 @@ def build_parser() -> argparse.ArgumentParser:
     stdio = ptr.add_parser("stdio", help="wrap a stdio MCP server command")
     stdio.add_argument("--plan")
     stdio.add_argument("--strict", action="store_true")
-    stdio.add_argument("server_cmd", nargs=argparse.REMAINDER,
+    stdio.add_argument("server_cmd", nargs=argparse.REMAINDER, action=_StripLeadingDashes,
                        help="-- <server command and args>")
 
     http = ptr.add_parser("http", help="front an HTTP MCP server")
