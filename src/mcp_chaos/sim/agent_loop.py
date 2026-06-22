@@ -1,0 +1,75 @@
+"""A deterministic non-LLM agent: each task fans out to `fanout` tool calls.
+
+This makes TCAF an input (not an emergent property) so blast radius is
+measurable offline without a model. A task succeeds iff every required call
+ultimately succeeds; resilience (retry budget, graceful degradation, ETA
+breaker) modifies how the agent reacts to failed calls.
+"""
+
+from __future__ import annotations
+
+from ..faults import ErrorInjectionFault, FaultPlan
+from ..interceptor import Interceptor
+from ..metrics import MetricsCollector, Summary
+from ..resilience import CircuitBreaker, ResilienceConfig
+from ..types import CallRecord, ToolCall
+from .fake_server import FakeMCPServer
+
+# Of the tools a task touches, treat the last two as "non-critical": under
+# graceful degradation a task can still succeed if only those fail.
+_NONCRITICAL_TAIL = 2
+
+
+def run_workload(
+    tasks: int,
+    fanout: int,
+    error_rate: float,
+    seed: int,
+    resilience: ResilienceConfig,
+) -> Summary:
+    server = FakeMCPServer()
+    plan = FaultPlan(faults=[ErrorInjectionFault(rate=error_rate)], seed=seed)
+    ix = Interceptor(plan)
+    metrics = MetricsCollector()
+    breaker = CircuitBreaker(resilience.eta_breaker_threshold)
+    tools = server.tools()
+
+    for i in range(tasks):
+        task_id = f"task-{i}"
+        task_ok = True
+        for j in range(fanout):
+            tool = tools[j % len(tools)]
+            critical = j < fanout - _NONCRITICAL_TAIL
+
+            if breaker.is_open(tool):
+                # Tool known-bad: degrade if allowed, else fail the task.
+                if not (resilience.graceful_degradation and not critical):
+                    task_ok = False
+                continue
+
+            call = ToolCall(tool=tool, task_id=task_id, deadline_ms=1000)
+            rec = _attempt(call, server, ix, resilience.retry_budget)
+            metrics.record_call(rec)
+            breaker.observe(tool, rec.responded, rec.correct)
+
+            if not rec.success:
+                if resilience.graceful_degradation and not critical:
+                    continue  # tolerate non-critical failure
+                task_ok = False
+        metrics.record_task(task_id, success=task_ok)
+
+    return metrics.summary()
+
+
+def _attempt(call: ToolCall, server: FakeMCPServer, ix: Interceptor, retry_budget: int) -> CallRecord:
+    attempts = 0
+    last = None
+    while attempts <= retry_budget:
+        call = ix.on_request(call)
+        result = ix.on_response(call, server.call(call))
+        rec = CallRecord(call=call, result=result, retries=attempts)
+        if rec.success:
+            return rec
+        last = rec
+        attempts += 1
+    return last
