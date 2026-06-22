@@ -1,0 +1,11 @@
+# Example mcp-chaos fault plan. Apply with: mcp-chaos proxy stdio --plan fault-plan.example.yaml -- <server cmd>
+seed: 42
+faults:
+  - type: latency
+    added_ms: 250
+    probability: 0.3
+  - type: error_injection
+    rate: 0.02
+  - type: schema_drift
+    tools: ["get_metrics"]
+    probability: 0.1
