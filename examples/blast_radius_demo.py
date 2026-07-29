@@ -6,7 +6,7 @@ Run: python examples/blast_radius_demo.py
 from mcp_chaos.resilience import ResilienceConfig
 from mcp_chaos.sim.agent_loop import run_workload
 
-PARAMS = dict(tasks=200, fanout=8, error_rate=0.02, seed=42)
+PARAMS = {"tasks": 200, "fanout": 8, "error_rate": 0.02, "seed": 42}
 
 
 def _row(label, s):

@@ -17,12 +17,12 @@ class ResilienceConfig:
     breaker_probe_interval: int = 0       # skipped calls between half-open probes (0 = never)
 
     @classmethod
-    def disabled(cls) -> "ResilienceConfig":
+    def disabled(cls) -> ResilienceConfig:
         # threshold=0.0: ETA is always >= 0, so the breaker never trips (fully disabled).
         return cls(retry_budget=0, graceful_degradation=False, eta_breaker_threshold=0.0)
 
     @classmethod
-    def enabled(cls, probe_interval: int = 0) -> "ResilienceConfig":
+    def enabled(cls, probe_interval: int = 0) -> ResilienceConfig:
         return cls(retry_budget=2, graceful_degradation=True, eta_breaker_threshold=0.5,
                    breaker_probe_interval=probe_interval)
 

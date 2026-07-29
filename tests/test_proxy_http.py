@@ -1,7 +1,8 @@
-import httpx
-import pytest
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
+
+import httpx
+import pytest
 
 from mcp_chaos.faults import DropToolFault, FaultPlan
 from mcp_chaos.proxy.http import build_app

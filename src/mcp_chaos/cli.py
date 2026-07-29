@@ -17,7 +17,7 @@ def _row(label, s):
 
 
 def cmd_demo(tasks=200, fanout=8, error_rate=0.02, seed=42) -> int:
-    params = dict(tasks=tasks, fanout=fanout, error_rate=error_rate, seed=seed)
+    params = {"tasks": tasks, "fanout": fanout, "error_rate": error_rate, "seed": seed}
     no_res = run_workload(resilience=ResilienceConfig.disabled(), **params)
     with_res = run_workload(resilience=ResilienceConfig.enabled(), **params)
     print("mcp-chaos — tool-call-plane blast radius (fan-out, injected error)\n")
@@ -33,6 +33,7 @@ def cmd_proxy(args) -> int:
         return asyncio.run(run_stdio_proxy(args.server_cmd, plan, strict=args.strict))
     if args.transport == "http":
         import uvicorn
+
         from .proxy.http import build_app
         app = build_app(upstream=args.upstream, plan=plan, strict=args.strict)
         uvicorn.run(app, host="127.0.0.1", port=args.port)

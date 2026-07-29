@@ -7,6 +7,8 @@ bursts / whole servers failing together) at a matched marginal per-call rate.
 
 from __future__ import annotations
 
+import itertools
+
 from mcp_chaos.faults import (
     BurstErrorFault,
     ErrorInjectionFault,
@@ -30,8 +32,7 @@ def _drive(plan: FaultPlan, calls: list[tuple[str, str]]) -> list[bool]:
 
 def _conditional_failure_rate(flags: list[bool]) -> float:
     """P(fail at i | fail at i-1)."""
-    pairs = [(a, b) for a, b in zip(flags, flags[1:])]
-    prior_failures = [b for a, b in pairs if a]
+    prior_failures = [b for a, b in itertools.pairwise(flags) if a]
     return sum(prior_failures) / len(prior_failures) if prior_failures else 0.0
 
 
@@ -175,8 +176,8 @@ def test_server_outage_defeats_recovery():
     """Server-scoped episodes at a matched ~2% marginal rate: per-call retry and
     graceful degradation recover almost none of it (the server is down for the
     whole task, and its tools sit in critical slots)."""
-    fault = dict(tools=["describe_service", "check_dependency"],
-                 episode_rate=0.08, episode_len=20)
+    fault = {"tools": ["describe_service", "check_dependency"],
+             "episode_rate": 0.08, "episode_len": 20}
     no_res, res = [], []
     for seed in range(10):
         no_res.append(run_workload(
@@ -197,8 +198,8 @@ def test_probes_recover_breaker_lockin():
     """Seed 6 is a measured catastrophic seed: a burst at run start trips the
     cumulative-ETA breaker on three tools, and without half-open probes the
     breaker never closes again -> ~100% blast radius. Probes must recover it."""
-    kwargs = dict(tasks=200, fanout=8, error_rate=0.02, seed=6,
-                  faults=[BurstErrorFault(rate=0.02, burst_len=16)])
+    kwargs = {"tasks": 200, "fanout": 8, "error_rate": 0.02, "seed": 6,
+              "faults": [BurstErrorFault(rate=0.02, burst_len=16)]}
     locked = run_workload(resilience=ResilienceConfig.enabled(), **kwargs).blast_radius
     probed = run_workload(resilience=ResilienceConfig.enabled(probe_interval=8),
                           **kwargs).blast_radius
