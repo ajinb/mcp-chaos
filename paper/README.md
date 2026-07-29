@@ -13,4 +13,11 @@ The `mcp-chaos demo` command reproduces the paper's headline result deterministi
 a 2% per-call failure rate at TCAF=8 compounds to a ~12% task blast radius, recovered
 to ~0% once retry budgets and graceful degradation are enabled.
 
+Reproducing the paper's measurements:
+
+- Table I / Fig. 1 (blast-radius sweep): `python examples/blast_radius_sweep.py`
+- Fig. 1 exactly (PDF + PNG): `python paper/figures/blast_radius_figure.py`
+- Table II (correlated faults): `python examples/correlated_faults.py`
+- Fig. 2 (reference architecture): `tectonic paper/figures/fig_architecture.tex`
+
 arXiv link: _to be added on preprint posting._

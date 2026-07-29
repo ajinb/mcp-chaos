@@ -5,6 +5,7 @@ from __future__ import annotations
 import yaml
 
 from .faults import (
+    BurstErrorFault,
     DropToolFault,
     ErrorInjectionFault,
     FaultPlan,
@@ -12,6 +13,7 @@ from .faults import (
     PartialResultFault,
     RegistryInconsistencyFault,
     SchemaDriftFault,
+    ServerDegradationFault,
 )
 
 _REGISTRY = {
@@ -21,6 +23,8 @@ _REGISTRY = {
     "partial_result": PartialResultFault,
     "registry_inconsistency": RegistryInconsistencyFault,
     "error_injection": ErrorInjectionFault,
+    "burst_error": BurstErrorFault,
+    "server_degradation": ServerDegradationFault,
 }
 
 

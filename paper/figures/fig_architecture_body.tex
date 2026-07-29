@@ -1,0 +1,58 @@
+% §8 reference-architecture figure body. Drop-in for the paper:
+% preamble needs: \usepackage{tikz}
+% \usetikzlibrary{positioning,fit,backgrounds,arrows.meta}
+% \definecolor{ccblue}{RGB}{33,113,181}
+\begin{tikzpicture}[
+  font=\scriptsize,
+  box/.style={draw=black!60, rounded corners=1.5pt, line width=0.5pt,
+              align=center, inner sep=3pt, fill=black!4},
+  pool/.style={draw=black!55, line width=0.4pt, inner sep=2pt, fill=white,
+               font=\tiny, minimum width=40pt},
+  srv/.style={box, fill=ccblue!6},
+  ctl/.style={box, fill=black!7, minimum width=78pt},
+  dp/.style={-{Stealth[length=4.5pt]}, line width=0.8pt, draw=ccblue},
+  cp/.style={-{Stealth[length=3.5pt]}, line width=0.5pt, draw=black!55, dashed},
+  lbl/.style={font=\tiny, text=black!70, align=center, inner sep=1pt},
+]
+% ---- data plane (left column) ----
+\node[box, minimum width=146pt] (host) at (0pt, 0pt)
+  {\textbf{Agent host} (LLM planner)\\[-1pt]
+   {\tiny probabilistic caller: intent $\rightarrow$ tool-call plan}};
+
+\node[align=center, inner sep=0pt] (gwtext) at (0pt, -46pt)
+  {\textbf{Tool-call gateway} {\tiny (data plane)}\\[-1pt]
+   {\tiny OTel span per call (TCSR $\cdot$ ETA $\cdot$ DA)}\\[-2pt]
+   {\tiny circuit breakers $\cdot$ retry budgets $\cdot$ deadline propagation}};
+\node[pool] (pa) at (-52pt, -68pt) {pool A};
+\node[pool] (pb) at (0pt, -68pt) {pool B};
+\node[pool] (pc) at (52pt, -68pt) {pool C};
+\node[lbl] (bh) at (0pt, -79pt) {bulkheads: per-server pools \& queues};
+\begin{scope}[on background layer]
+  \node[box, fit=(gwtext)(pa)(pc)(bh), inner sep=4pt] (gw) {};
+\end{scope}
+
+\node[srv, minimum width=46pt] (sa) at (-52pt, -110pt) {MCP\\[-2pt] server A};
+\node[srv, minimum width=46pt] (sb) at (0pt, -110pt)   {MCP\\[-2pt] server B};
+\node[srv, minimum width=46pt] (sc) at (52pt, -110pt)  {MCP\\[-2pt] server C};
+
+\draw[dp] (host) -- node[lbl, right=1.5pt] {tool call + step deadline} (gw);
+\draw[dp] ([xshift=-52pt]gw.south) -- (sa.north);
+\draw[dp] (gw.south) -- (sb.north);
+\draw[dp] ([xshift=52pt]gw.south) -- (sc.north);
+
+% ---- control plane (right column) ----
+\node[ctl] (reg) at (152pt, -38pt)
+  {\textbf{Registry}\\[-1pt]
+   {\tiny freshness SLO $\cdot$ staleness budget}\\[-2pt]
+   {\tiny pre-exposure validation}};
+\node[ctl] (pol) at (152pt, -76pt)
+  {\textbf{Policy / health}\\[-1pt]
+   {\tiny correctness probes $\rightarrow$ $C$ of ETA}\\[-2pt]
+   {\tiny SLI store $\cdot$ tool-plane error budgets}};
+\node[lbl] at (152pt, -20pt) {control plane};
+
+\draw[cp] (reg.west) -- (reg.west -| gw.east);
+\draw[cp] (pol.west -| gw.east) -- (pol.west);
+\draw[cp] (pol.south) |- node[lbl, below=1pt, pos=0.72] {correctness probes}
+  ([yshift=-3pt]sc.east);
+\end{tikzpicture}

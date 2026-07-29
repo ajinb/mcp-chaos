@@ -15,6 +15,8 @@ class FaultTag(str, Enum):
     PARTIAL_RESULT = "partial_result"
     REGISTRY_INCONSISTENCY = "registry_inconsistency"
     ERROR_INJECTION = "error_injection"
+    BURST_ERROR = "burst_error"
+    SERVER_DEGRADATION = "server_degradation"
 
 
 @dataclass

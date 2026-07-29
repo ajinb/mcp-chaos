@@ -5,7 +5,7 @@
 
 > Chaos engineering for the **MCP tool-call plane**. Inject operational faults into MCP tool calls and measure their **agent-task blast radius** — the reliability-testing counterpart to [mcp-gateway](https://github.com/ajinb/mcp-gateway).
 
-Most MCP tooling is studied as a *security* surface. `mcp-chaos` treats the tool-call path as what it has become in production: a distributed-systems tier with its own reliability properties. It injects latency, dropped tools, schema drift, partial results, registry inconsistency, and errors — then reports the SLIs that actually predict whether your agent works.
+Most MCP tooling is studied as a *security* surface. `mcp-chaos` treats the tool-call path as what it has become in production: a distributed-systems tier with its own reliability properties. It injects latency, dropped tools, schema drift, partial results, registry inconsistency, iid errors, **correlated burst errors**, and **server-scoped degradation episodes** — then reports the SLIs that actually predict whether your agent works.
 
 Companion to the paper *The Tool-Call Plane: An Operational Reliability Model for MCP-Based Agent Infrastructure* (see [`paper/`](paper/)).
 
@@ -43,6 +43,25 @@ mcp-chaos proxy http --plan fault-plan.example.yaml --upstream http://localhost:
 ```
 
 Faults are declared in a YAML plan ([`fault-plan.example.yaml`](fault-plan.example.yaml)). The proxy **fails safe**: any internal error forwards the original traffic unless you pass `--strict`.
+
+## Correlated faults (paper §6, Table II)
+
+Independent per-call faults are the benign case. The correlated sweep re-runs the
+headline cell (~2% marginal per-call error, TCAF=8) with the same marginal rate
+delivered as temporal bursts and as server-scoped degradation episodes:
+
+```bash
+python examples/correlated_faults.py
+```
+
+Three measured effects: correlation concentrates failure into heavy tails (mean
+blast radius *below* the iid prediction, variance way up); retry budgets stop
+working (retries land inside the burst that failed the first attempt); and a
+circuit breaker without half-open probes becomes a liability — a transient
+episode trips it permanently, locking tools out for the rest of the run.
+`ResilienceConfig.enabled(probe_interval=8)` enables half-open probes, which
+eliminate lock-in; server-scoped outages additionally need structural
+containment (bulkheads/failover), not per-call patterns.
 
 ## Metrics (paper §5)
 

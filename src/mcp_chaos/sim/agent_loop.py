@@ -8,7 +8,7 @@ breaker) modifies how the agent reacts to failed calls.
 
 from __future__ import annotations
 
-from ..faults import ErrorInjectionFault, FaultPlan
+from ..faults import ErrorInjectionFault, Fault, FaultPlan
 from ..interceptor import Interceptor
 from ..metrics import MetricsCollector, Summary
 from ..resilience import CircuitBreaker, ResilienceConfig
@@ -26,12 +26,19 @@ def run_workload(
     error_rate: float,
     seed: int,
     resilience: ResilienceConfig,
+    faults: list[Fault] | None = None,
 ) -> Summary:
+    """Drive the workload. By default injects iid per-call errors at `error_rate`;
+    pass `faults` to substitute any fault list (e.g. correlated burst or
+    server-degradation faults) while keeping the same workload and metrics."""
     server = FakeMCPServer()
-    plan = FaultPlan(faults=[ErrorInjectionFault(rate=error_rate)], seed=seed)
+    plan = FaultPlan(
+        faults=list(faults) if faults is not None else [ErrorInjectionFault(rate=error_rate)],
+        seed=seed,
+    )
     ix = Interceptor(plan)
     metrics = MetricsCollector()
-    breaker = CircuitBreaker(resilience.eta_breaker_threshold)
+    breaker = CircuitBreaker(resilience.eta_breaker_threshold, resilience.breaker_probe_interval)
     tools = server.tools()
 
     for i in range(tasks):
@@ -41,8 +48,11 @@ def run_workload(
             tool = tools[j % len(tools)]
             critical = j < fanout - _NONCRITICAL_TAIL
 
-            if breaker.is_open(tool):
+            if breaker.is_open(tool) and not breaker.should_probe(tool):
                 # Tool known-bad: degrade if allowed, else fail the task.
+                # (When probing is enabled, every Nth skip falls through and the
+                # call becomes a half-open probe; its outcome closes the breaker
+                # via observe() on success.)
                 if not (resilience.graceful_degradation and not critical):
                     task_ok = False
                 continue

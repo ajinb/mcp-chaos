@@ -9,3 +9,11 @@ faults:
   - type: schema_drift
     tools: ["get_metrics"]
     probability: 0.1
+  # Correlated faults (paper §6, Table II) — uncomment to replace iid error_injection:
+  # - type: burst_error          # failures arrive in bursts, same marginal rate
+  #   rate: 0.02
+  #   burst_len: 16              # mean burst length in calls; 1 ~= iid
+  # - type: server_degradation   # a whole server's tools fail together
+  #   tools: ["get_logs", "get_traces"]
+  #   episode_rate: 0.08         # stationary fraction of degraded tasks
+  #   episode_len: 20            # mean episode length in tasks

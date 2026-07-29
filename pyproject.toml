@@ -1,6 +1,6 @@
 [project]
 name = "mcp-chaos"
-version = "0.1.0"
+version = "0.2.0"
 description = "Chaos engineering for the MCP tool-call plane: fault injection + reliability metrics for agent tool use"
 readme = "README.md"
 requires-python = ">=3.11"
