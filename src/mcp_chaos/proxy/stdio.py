@@ -27,18 +27,20 @@ async def _pump_client_to_server(reader: asyncio.StreamReader, writer: asyncio.S
         await writer.drain()
 
 
+def _rewrite(line: bytes, transform) -> bytes:
+    """Apply `transform` to a JSON-RPC line; anything unparseable passes through verbatim."""
+    try:
+        return (json.dumps(transform(json.loads(line))) + "\n").encode()
+    except (json.JSONDecodeError, ValueError):
+        return line
+
+
 async def _pump_server_to_client(reader: asyncio.StreamReader, out, engine: ProxyEngine) -> None:
     while not reader.at_eof():
         line = await reader.readline()
         if not line:
             break
-        try:
-            msg = json.loads(line)
-            msg = engine.on_response_message(msg)
-            line = (json.dumps(msg) + "\n").encode()
-        except (json.JSONDecodeError, ValueError):
-            pass
-        out.write(line)
+        out.write(_rewrite(line, engine.on_response_message))
         out.flush()
 
 
