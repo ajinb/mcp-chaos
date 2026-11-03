@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: "mcp-chaos"
+message: "If you use this software, please cite it using the metadata below."
+type: software
+authors:
+  - family-names: Baby
+    given-names: Ajin
+    orcid: "https://orcid.org/0009-0007-6190-9516"
+repository-code: "https://github.com/ajinb/mcp-chaos"
+url: "https://cloudandsre.com"
+abstract: "Chaos engineering for the MCP tool-call plane: fault injection + reliability SLIs for agent tool use"
+license: Apache-2.0
+version: "0.2.0"
+date-released: "2026-11-03"
+keywords:
+  - model-context-protocol
+  - chaos-engineering
+  - fault-injection
+  - reliability
+  - ai-agents
